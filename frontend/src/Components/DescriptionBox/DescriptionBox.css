@@ -1,0 +1,112 @@
+.descriptionbox {
+    margin: 120px 170px;
+}
+
+/* ✅ Navigation Box */
+.descriptionbox-navigator {
+    display: flex;
+}
+
+.descriptionbox-navi-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    width: 171px;
+    height: 70px;
+    border: 1px solid #d0d0d0;
+}
+
+.descriptionbox-navi-box.fade {
+    background: #fbfbfb;
+    color: #555;
+}
+
+/* ✅ Description */
+.descriptionbox-description {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    border: 1px solid #d0d0d0;
+    padding: 48px;
+    padding-bottom: 70px;
+}
+
+/* --- 📌 Responsive Media Queries --- */
+
+/* ✅ 1280px: Slightly reduce margins for medium-large screens */
+@media (max-width: 1280px) {
+    .descriptionbox {
+        margin: 100px 120px;
+    }
+    
+    .descriptionbox-description {
+        padding: 40px;
+        padding-bottom: 60px;
+    }
+}
+
+/* ✅ 1024px: Reduce margin & padding for smaller screens */
+@media (max-width: 1024px) {
+    .descriptionbox {
+        margin: 80px 80px;
+    }
+
+    .descriptionbox-description {
+        padding: 35px;
+        padding-bottom: 50px;
+    }
+
+    .descriptionbox-navi-box {
+        width: 150px;
+        height: 60px;
+        font-size: 14px;
+    }
+}
+
+/* ✅ 800px: Adjust spacing for tablet screens */
+@media (max-width: 800px) {
+    .descriptionbox {
+        margin: 60px 40px;
+    }
+
+    .descriptionbox-description {
+        padding: 30px;
+        padding-bottom: 45px;
+    }
+
+    .descriptionbox-navigator {
+        flex-direction: column; /* ✅ Stack navigation on smaller screens */
+    }
+
+    .descriptionbox-navi-box {
+        width: 100%;
+        height: 55px;
+        font-size: 14px;
+    }
+}
+
+/* ✅ 500px: Make it fully responsive for mobile */
+@media (max-width: 500px) {
+    .descriptionbox {
+        margin: 40px 20px;
+    }
+
+    .descriptionbox-description {
+        padding: 25px;
+        padding-bottom: 40px;
+        font-size: 14px;
+        line-height: 1.6; /* ✅ Improve readability */
+    }
+
+    .descriptionbox-navigator {
+        flex-direction: column;
+    }
+
+    .descriptionbox-navi-box {
+        width: 100%;
+        height: 50px;
+        font-size: 13px;
+    }
+}

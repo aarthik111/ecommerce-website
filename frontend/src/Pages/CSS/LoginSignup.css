@@ -1,0 +1,208 @@
+.loginsignup {
+    width: 100%;
+    min-height: 80vh; /* Changed from height to min-height for flexibility */
+    background: #fce3fe;
+    padding-top: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-bottom: 50px; /* Added bottom padding to prevent merging */
+}
+
+.loginsignup-container {
+    width: 580px;
+    min-height: 600px;
+    background: white;
+    padding: 40px 60px;
+    border-radius: 10px;
+}
+
+.loginsignup-container h1 {
+    margin: 20px 0px;
+}
+
+.loginsignup-feilds {
+    display: flex;
+    flex-direction: column;
+    gap: 29px;
+    margin-top: 30px;
+}
+
+.loginsignup-feilds input {
+    height: 60px;
+    width: 100%;
+    padding-left: 20px;
+    border: 1px solid #c9c9c9;
+    outline: none;
+    color: #5c5c5c;
+    font-size: 18px;
+    border-radius: 5px;
+}
+
+.loginsignup-container button {
+    width: 100%;
+    height: 72px;
+    color: white;
+    background: #ff4141;
+    margin-top: 30px;
+    border: none;
+    font-size: 24px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.loginsignup-login {
+    margin-top: 20px;
+    color: #5c5c5c;
+    font-size: 18px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.loginsignup-login span {
+    color: #ff4141;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.loginsignup-agree {
+    display: flex;
+    align-items: center;
+    margin-top: 25px;
+    gap: 10px;
+    color: #5c5c5c;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+/* Fix for Footer Overlapping Issue */
+footer {
+    position: relative;
+    width: 100%;
+    background: #252525;
+    color: white;
+    padding: 30px 0;
+    text-align: center;
+    margin-top: 50px; /* Ensures footer doesn't overlap */
+}
+
+/* Responsive for screens up to 1280px */
+@media (max-width: 1280px) {
+    .loginsignup {
+        min-height: 85vh; /* Slightly increased height */
+        padding-bottom: 60px;
+    }
+
+    .loginsignup-container {
+        width: 500px;
+        min-height: 550px;
+        padding: 30px 50px;
+    }
+
+    .loginsignup-container h1 {
+        font-size: 28px;
+    }
+
+    .loginsignup-feilds input {
+        height: 55px;
+        font-size: 16px;
+    }
+
+    .loginsignup-container button {
+        height: 65px;
+        font-size: 22px;
+    }
+
+    footer {
+        margin-top: 60px;
+    }
+}
+
+/* Responsive for screens up to 800px */
+@media (max-width: 800px) {
+    .loginsignup {
+        min-height: auto;
+        padding-top: 50px;
+        padding-bottom: 70px;
+    }
+
+    .loginsignup-container {
+        width: 400px;
+        min-height: auto;
+        padding: 25px 40px;
+    }
+
+    .loginsignup-container h1 {
+        font-size: 24px;
+        text-align: center;
+    }
+
+    .loginsignup-feilds input {
+        height: 50px;
+        font-size: 16px;
+    }
+
+    .loginsignup-container button {
+        height: 60px;
+        font-size: 20px;
+    }
+
+    .loginsignup-login {
+        font-size: 14px;
+    }
+
+    .loginsignup-agree {
+        font-size: 14px;
+    }
+
+    footer {
+        margin-top: 80px;
+    }
+}
+
+/* Responsive for screens up to 500px */
+@media (max-width: 500px) {
+    .loginsignup {
+        min-height: auto;
+        padding-top: 30px;
+        padding-bottom: 100px; /* Increased padding to create space */
+    }
+
+    .loginsignup-container {
+        width: 90%;
+        min-height: auto;
+        padding: 20px;
+    }
+
+    .loginsignup-container h1 {
+        font-size: 20px;
+        text-align: center;
+    }
+
+    .loginsignup-feilds {
+        gap: 20px;
+    }
+
+    .loginsignup-feilds input {
+        height: 45px;
+        font-size: 14px;
+    }
+
+    .loginsignup-container button {
+        height: 55px;
+        font-size: 18px;
+    }
+
+    .loginsignup-login {
+        font-size: 12px;
+    }
+
+    .loginsignup-agree {
+        font-size: 12px;
+    }
+
+    footer {
+        margin-top: 100px; /* Ensures footer stays at bottom */
+    }
+}
