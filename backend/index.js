@@ -2,6 +2,7 @@ const port = process.env.PORT || 4000;
 const express=require("express")
 const app=express();
 const cors = require("cors");
+app.use(cors());
 const mongoose = require("mongoose")
 const jwt = require("jsonwebtoken")
 const multer = require("multer")
@@ -10,7 +11,6 @@ const { type } = require("os");
 const { error } = require("console");
 require("dotenv").config();
 
-app.use(cors());
 app.use(express.json());
 
 //Database connection with mongoDB
