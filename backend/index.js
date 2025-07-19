@@ -1,30 +1,66 @@
-const express = require("express");
-const app = express();
-const cors = require("cors");
 require("dotenv").config();
-
+const express = require("express");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const path = require("path");
+const cors = require("cors");
+const nodemailer = require("nodemailer");
+const bcrypt = require("bcrypt");
 
+const app = express();
 const port = process.env.PORT || 4000;
 
-// ✅ CORS setup — must be BEFORE routes/middleware
+// ✅ CORS: Allow frontend + admin URLs
 app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:5173"],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "auth-token"],
+  origin: [
+    'https://e-commerce-web-frontend-hs4r.onrender.com',
+    'https://e-commerce-web-admin-e9pb.onrender.com'
+  ],
   credentials: true
 }));
+app.options('*', cors()); // For preflight requests
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // ✅ MongoDB connection
-mongoose.connect(process.env.MONGO_URI);
+mongoose.connect(process.env.MONGODB_URI);
 
-// ✅ Models
+// ✅ Email transporter using Brevo
+const transporter = nodemailer.createTransport({
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
+
+const otpStore = new Map();
+
+// ✅ Image Uploads (⚠️ Render storage is not persistent!)
+const storage = multer.diskStorage({
+  destination: './upload/images',
+  filename: (req, file, cb) => {
+    cb(null, `${file.fieldname}_${Date.now()}${path.extname(file.originalname)}`);
+  }
+});
+const upload = multer({ storage });
+app.use('/images', express.static('upload/images'));
+
+app.post("/upload", upload.single('product'), (req, res) => {
+  const host = req.protocol + '://' + req.get('host');
+  res.json({
+    success: 1,
+    image_url: `${host}/images/${req.file.filename}`
+  });
+});
+
+// ✅ MongoDB Schemas
 const Product = mongoose.model("Product", {
   id: Number,
   name: String,
@@ -44,168 +80,170 @@ const Users = mongoose.model("Users", {
   date: { type: Date, default: Date.now }
 });
 
-// ✅ Static image serving
-app.use('/images', express.static('upload/images'));
+// ✅ Send OTP
+app.post('/send-otp', async (req, res) => {
+  const { email } = req.body;
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = Date.now() + 5 * 60 * 1000;
+  otpStore.set(email, { otp, expiresAt });
 
-// ✅ File upload engine
-const storage = multer.diskStorage({
-  destination: './upload/images',
-  filename: (req, file, cb) => {
-    cb(null, `${file.fieldname}_${Date.now()}${path.extname(file.originalname)}`);
-  }
-});
-const upload = multer({ storage });
-
-// ✅ Routes
-app.get("/", (req, res) => {
-  res.send("Express App is Running");
-});
-
-app.post("/upload", upload.single('product'), (req, res) => {
-  res.json({
-    success: 1,
-    image_url: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
-  });
-});
-
-app.post('/addproduct', async (req, res) => {
   try {
-    const products = await Product.find({});
-    const id = products.length > 0 ? products[products.length - 1].id + 1 : 1;
-    const product = new Product({
-      id,
-      name: req.body.name,
-      image: req.body.image,
-      category: req.body.category,
-      new_price: Number(req.body.new_price),
-      old_price: Number(req.body.old_price)
+    await transporter.sendMail({
+      from: process.env.SENDER_EMAIL,
+      to: email,
+      subject: 'OTP Verification',
+      text: `Your OTP is ${otp}`
     });
-    await product.save();
-    res.json({ success: true, name: req.body.name });
+    res.json({ success: true, message: "OTP sent to email" });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, message: "Failed to send OTP" });
   }
 });
 
-app.post('/removeproduct', async (req, res) => {
-  try {
-    await Product.findOneAndDelete({ id: req.body.id });
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+// ✅ Verify OTP & Signup
+app.post('/verify-otp-signup', async (req, res) => {
+  const { name, email, password, otp } = req.body;
+  const otpData = otpStore.get(email);
+
+  if (!otpData || otpData.otp !== otp || Date.now() > otpData.expiresAt) {
+    return res.status(400).json({ success: false, message: "Invalid or expired OTP" });
   }
+
+  const existingUser = await Users.findOne({ email });
+  if (existingUser) return res.status(400).json({ success: false, message: "User already exists" });
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const cart = {}; for (let i = 0; i < 300; i++) cart[i] = 0;
+
+  const user = new Users({ name, email, password: hashedPassword, cartData: cart });
+  await user.save();
+  otpStore.delete(email);
+
+  const token = jwt.sign({ user: { id: user._id } }, process.env.JWT_SECRET);
+  res.json({ success: true, token });
 });
 
-app.get('/allproducts', async (req, res) => {
-  try {
-    const products = await Product.find({});
-    res.json(products);
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.get('/newcollections', async (req, res) => {
-  try {
-    const products = await Product.find({});
-    const newcollection = products.slice(-8);
-    res.json(newcollection);
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.get('/popularinwomen', async (req, res) => {
-  try {
-    const products = await Product.find({ category: "women" });
-    const popular = products.slice(0, 4);
-    res.json(popular);
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/signup', async (req, res) => {
-  try {
-    const check = await Users.findOne({ email: req.body.email });
-    if (check) {
-      return res.status(400).json({ success: false, errors: "Email already exists" });
-    }
-    const cart = {};
-    for (let i = 0; i < 300; i++) cart[i] = 0;
-    const user = new Users({
-      name: req.body.name,
-      email: req.body.email,
-      password: req.body.password,
-      cartData: cart
-    });
-    await user.save();
-    const token = jwt.sign({ user: { id: user.id } }, process.env.JWT_SECRET);
-    res.json({ success: true, token });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
+// ✅ Login
 app.post('/login', async (req, res) => {
+  const user = await Users.findOne({ email: req.body.email });
+  if (!user) return res.json({ success: false, errors: "Wrong Email Id" });
+
+  const isMatch = await bcrypt.compare(req.body.password, user.password);
+  if (!isMatch) return res.json({ success: false, error: "Wrong Password" });
+
+  const token = jwt.sign({ user: { id: user._id } }, process.env.JWT_SECRET);
+  res.json({ success: true, token });
+});
+
+// ✅ Forgot Password
+app.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  const user = await Users.findOne({ email });
+  if (!user) return res.json({ success: false, message: "Email not registered" });
+
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+  const resetLink = `https://e-commerce-web-frontend-hs4r.onrender.com/reset-password/${token}`;
+
   try {
-    const user = await Users.findOne({ email: req.body.email });
-    if (!user || user.password !== req.body.password) {
-      return res.json({ success: false, error: "Invalid email or password" });
-    }
-    const token = jwt.sign({ user: { id: user.id } }, process.env.JWT_SECRET);
-    res.json({ success: true, token });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    await transporter.sendMail({
+      from: process.env.SENDER_EMAIL,
+      to: email,
+      subject: "Reset your password",
+      html: `<p>Click the link to reset your password:</p><a href="${resetLink}">${resetLink}</a>`
+    });
+    res.json({ success: true, message: "Reset link sent to email." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to send email." });
   }
 });
 
+// ✅ Reset Password
+app.post('/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await Users.findById(decoded.id);
+    if (!user) return res.status(400).json({ success: false, message: "User not found" });
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.json({ success: true, message: "Password updated successfully" });
+  } catch (err) {
+    res.status(400).json({ success: false, message: "Invalid or expired token" });
+  }
+});
+
+// ✅ Auth Middleware
 const fetchUser = async (req, res, next) => {
   const token = req.header('auth-token');
-  if (!token) return res.status(401).json({ errors: "Token required" });
+  if (!token) return res.status(401).send({ errors: "Please authenticate using a valid token" });
+
   try {
     const data = jwt.verify(token, process.env.JWT_SECRET);
     req.user = data.user;
     next();
-  } catch {
-    res.status(401).json({ errors: "Invalid token" });
+  } catch (error) {
+    return res.status(401).send({ errors: "Invalid token" });
   }
 };
 
+// ✅ Product Routes
+app.post('/addproduct', async (req, res) => {
+  const products = await Product.find({});
+  const id = products.length > 0 ? products[products.length - 1].id + 1 : 1;
+
+  const product = new Product({ id, ...req.body });
+  await product.save();
+  res.json({ success: true, name: req.body.name });
+});
+
+app.post('/removeproduct', async (req, res) => {
+  await Product.findOneAndDelete({ id: req.body.id });
+  res.json({ success: true });
+});
+
+app.get('/allproducts', async (req, res) => {
+  const products = await Product.find({});
+  res.json(products);
+});
+
+app.get('/newcollections', async (req, res) => {
+  const products = await Product.find({});
+  const newcollection = products.slice(1).slice(-8);
+  res.send(newcollection);
+});
+
+app.get('/popularinwomen', async (req, res) => {
+  const products = await Product.find({ category: "women" });
+  const popular = products.slice(0, 4);
+  res.send(popular);
+});
+
+// ✅ Cart Routes
 app.post('/addtocart', fetchUser, async (req, res) => {
-  try {
-    const user = await Users.findOne({ _id: req.user.id });
-    user.cartData[req.body.itemId] += 1;
-    await Users.updateOne({ _id: req.user.id }, { cartData: user.cartData });
-    res.json({ success: true, message: "Added" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  const userData = await Users.findById(req.user.id);
+  userData.cartData[req.body.itemId] += 1;
+  await Users.findByIdAndUpdate(req.user.id, { cartData: userData.cartData });
+  res.json({ success: true });
 });
 
 app.post('/removefromcart', fetchUser, async (req, res) => {
-  try {
-    const user = await Users.findOne({ _id: req.user.id });
-    if (user.cartData[req.body.itemId] > 0) {
-      user.cartData[req.body.itemId] -= 1;
-      await Users.updateOne({ _id: req.user.id }, { cartData: user.cartData });
-    }
-    res.json({ success: true, message: "Removed" });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  const userData = await Users.findById(req.user.id);
+  if (userData.cartData[req.body.itemId] > 0)
+    userData.cartData[req.body.itemId] -= 1;
+  await Users.findByIdAndUpdate(req.user.id, { cartData: userData.cartData });
+  res.json({ success: true });
 });
 
 app.post('/getcart', fetchUser, async (req, res) => {
-  try {
-    const user = await Users.findOne({ _id: req.user.id });
-    res.json(user.cartData);
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+  const userData = await Users.findById(req.user.id);
+  res.json(userData.cartData);
 });
 
 // ✅ Start server
 app.listen(port, () => {
-  console.log(`Server Running on Port ${port}`);
+  console.log(`✅ Server running on http://localhost:${port}`);
 });
